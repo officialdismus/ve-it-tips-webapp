@@ -1,0 +1,4 @@
+# Git ignore file for Village Enterprise IT Tips Web Application
+#
+# This file specifies which files and directories should be ignored by Git.
+# Common entries include node_modules, build artifacts, environment files, etc.
