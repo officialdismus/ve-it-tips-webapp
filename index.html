@@ -1,6 +1,62 @@
-<!--
-  Main HTML file for Village Enterprise IT Tips Web Application
-  
-  This file will serve as the entry point for the web application.
-  It will contain the basic HTML structure and layout for displaying IT tips cards.
--->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Village Enterprise IT Tips - A collection of helpful IT tips and resources">
+    <title>Village Enterprise IT Tips</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Village Enterprise IT Tips</h1>
+        <p class="description">Discover helpful IT tips and resources to enhance your productivity</p>
+    </header>
+
+    <main>
+        <section class="filters">
+            <div class="search-container">
+                <label for="searchInput" class="sr-only">Search tips</label>
+                <input 
+                    type="search" 
+                    id="searchInput" 
+                    placeholder="Search tips…" 
+                    aria-label="Search tips"
+                >
+            </div>
+
+            <div class="filter-container">
+                <label for="categoryFilter">Filter by category:</label>
+                <select id="categoryFilter" aria-label="Filter tips by category">
+                    <option value="">All Categories</option>
+                </select>
+            </div>
+        </section>
+
+        <section class="cards-section">
+            <div id="cardsContainer" role="region" aria-label="IT tips cards">
+                <!-- Cards will be dynamically inserted here -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal Overlay -->
+    <div id="stepsModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle" class="modal-title">Steps</h2>
+                <button class="modal-close" onclick="closeStepsModal()" aria-label="Close steps modal">
+                    ×
+                </button>
+            </div>
+            <div class="modal-body">
+                <ol id="modalStepsList" class="modal-steps">
+                    <!-- Steps will be inserted here -->
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
