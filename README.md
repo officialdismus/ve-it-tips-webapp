@@ -232,5 +232,3 @@ Internal use only - Village Enterprise
 To update IT tips, edit the Google Sheet. Changes will automatically appear in the web app after the sheet is republished.
 
 ---
-
-**Built with ❤️ for Village Enterprise**
