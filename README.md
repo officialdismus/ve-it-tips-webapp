@@ -61,7 +61,11 @@ The Google Sheet is:
 - ✅ Card-based layout (instead of tables)
 - ✅ Search by issue or description
 - ✅ Filter by category (Google Workspace, Slack, Windows, etc.)
-- ✅ Expand/collapse steps per card
+- ✅ Expand/collapse steps per card (modal popup)
+- ✅ **Dedicated steps detail page** - separate page for viewing full step-by-step instructions
+- ✅ **Checklist mode** - track your progress through steps with checkboxes (persists in browser)
+- ✅ **Copy steps** - copy all steps to clipboard for easy sharing
+- ✅ **Print guide** - print-friendly view of any tip
 - ✅ Mobile-first responsive design
 - ✅ Clear, readable steps formatting
 - ✅ Village Enterprise branding and colors
@@ -73,6 +77,7 @@ The Google Sheet is:
 - Large touch targets
 - Works on slow connections
 - No authentication required
+- Progress saved locally (checklist state persists between visits)
 
 ## 🛠️ Technology Stack (100% Free)
 
@@ -95,10 +100,13 @@ The Google Sheet is:
 ```
 ve-it-tips-webapp/
 ├── assets/         # Images, logos, icons
-├── index.html      # Main UI structure
+├── index.html      # Main UI - displays all IT tips as cards
+├── steps.html      # Detail page - shows full steps for a single tip
 ├── style.css       # Village Enterprise theme styles
-├── script.js       # CSV fetch, parsing, rendering logic
+├── script.js       # CSV fetch, parsing, rendering logic for index page
+├── steps.js        # Detail page logic (checklist, copy, print)
 ├── README.md       # Project documentation
+├── TESTING.md      # Testing instructions
 └── .gitignore      # Git ignore rules
 ```
 
@@ -196,7 +204,7 @@ That's it! No coding or command line knowledge needed.
 ## 🚧 Future Enhancements (Not in MVP)
 
 - Icons per category
-- Bookmark/favorites (localStorage)
+- Bookmark/favorites (localStorage) - ✅ *Implemented: Checklist progress saved*
 - Submit new tips via Google Form
 - Offline cached version
 - Sorting by date or category

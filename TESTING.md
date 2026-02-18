@@ -14,15 +14,90 @@
 2. Go to: `http://localhost:8000`
 3. The app should load automatically
 
-### Step 3: Test the Features
+---
+
+## Testing the Main Page (index.html)
+
+### Step 3: Test Main Page Features
 - **Search:** Type in the search box (try "email" or "slack")
 - **Filter:** Use the category dropdown to filter by category
-- **Steps:** Click "Show Steps" buttons to open beautiful popup modals with well-aligned instructions
-- **Modal:** Click outside modal or press ESC to close, click × to close
-- **Mobile:** Resize browser window or use dev tools to test mobile view
+- **Cards:** Browse the card-based layout showing all IT tips
+- **Modal:** Click "Show Steps" buttons to open popup modals with step-by-step instructions
+- **Modal Close:** Click outside modal, press ESC, or click × to close
 
-### Step 4: Stop the Server
-- Close the command window that opened
+---
+
+## Testing the Steps Detail Page (steps.html)
+
+### Step 4: Navigate to Steps Page
+1. Click on any tip card's "Show Steps" button OR click the title/description
+2. You'll be taken to `steps.html?id=XXX` (detail page)
+3. The page shows:
+   - Category badge at the top
+   - Issue title
+   - Description
+   - Full step-by-step instructions
+
+### Step 5: Test Detail Page Features
+
+#### Checklist Mode
+1. Click the **Checklist** button to enable checklist mode
+2. Checkboxes appear next to each step
+3. **Sequential completion:** You must complete steps in order (can't skip ahead)
+4. Unchecking a step unchecks all following steps
+5. Progress is saved automatically to your browser (localStorage)
+6. Refresh the page - your progress is remembered!
+
+#### Copy Steps
+1. Click **Copy all steps** to copy all steps to clipboard
+2. Button shows "Copied!" confirmation
+3. Paste anywhere to share the steps
+
+#### Print Guide
+1. Click **Print this guide** to open the browser print dialog
+2. Print or save as PDF for offline reference
+
+#### Back Navigation
+1. Click "← Back to all tips" to return to the main list
+2. Use browser back button also works
+
+---
+
+## Mobile Testing
+
+### Step 6: Test Mobile Responsiveness
+- Resize browser window to test mobile view
+- Or use browser dev tools (F12 → Toggle device toolbar)
+- Verify:
+  - Cards stack properly on small screens
+  - Buttons are touch-friendly
+  - Text is readable
+  - Modal fits on mobile screens
+  - Steps detail page is usable on mobile
+
+---
+
+## What Should You See?
+
+### Main Page (index.html)
+✅ **Cards** loading from Google Sheet  
+✅ **Search box** that filters results in real-time  
+✅ **Category dropdown** with all your IT categories  
+✅ **Show Steps** buttons that open 70% width popup modals  
+✅ **Modal popups** with well-aligned, numbered steps  
+✅ **Mobile-responsive** design  
+
+### Steps Detail Page (steps.html)
+✅ **Category badge** at top  
+✅ **Issue title** and **description**  
+✅ **Step-by-step list** with numbered items  
+✅ **Checklist button** - enables sequential checkbox tracking  
+✅ **Copy all steps button** - copies to clipboard  
+✅ **Print this guide button** - opens print dialog  
+✅ **Progress indicator** showing completed steps  
+✅ **LocalStorage persistence** - progress saved between visits  
+✅ **Back link** to return to main page  
+✅ **Metadata** showing creator and last updated date  
 
 ---
 
@@ -43,25 +118,26 @@
 - Check if antivirus is blocking PowerShell
 - Try the manual PowerShell method in README.md
 
----
-
-## What Should You See?
-
-✅ **21 cards** loading from Google Sheet
-✅ **Search box** that filters results
-✅ **Category dropdown** with all your IT categories
-✅ **Show Steps** buttons that open beautiful 70% width popup modals
-✅ **Modal popups** with well-aligned, numbered steps and responsive design
-✅ **Mobile-responsive** design
+### If checklist doesn't work:
+- Make sure you're on the steps detail page (steps.html)
+- Checklist is disabled by default - click "Checklist" button to enable
+- Check browser supports localStorage
+- Try in incognito mode if localStorage is blocked
 
 ---
 
 ## Ready for Production?
 
 Once testing works, deploy to GitHub Pages:
-1. Create GitHub repository
-2. Push these files
-3. Enable GitHub Pages
+1. Create GitHub repository (or use existing)
+2. Push these files:
+   - index.html
+   - steps.html
+   - style.css
+   - script.js
+   - steps.js
+   - assets/
+3. Enable GitHub Pages in repository settings
 4. Site will be live at: `https://YOUR_USERNAME.github.io/REPO_NAME/`
 
 **No more CORS issues after deployment!**
