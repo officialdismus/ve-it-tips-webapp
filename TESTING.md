@@ -25,6 +25,12 @@
 - **Modal:** Click "Show Steps" buttons to open popup modals with step-by-step instructions
 - **Modal Close:** Click outside modal, press ESC, or click × to close
 
+### New UX Tests
+- **Skeletons:** On first load, confirm placeholder skeleton cards appear immediately with a subtle shimmer while data downloads.
+- **Filtering spinner:** When typing quickly in the search box or changing filters, you should briefly see a small inline loading spinner message while results update.
+- **Error & Retry:** If the app cannot reach the Google Sheet (network/CORS), an error card appears with a "Try Again" button which reloads the page.
+- **Empty state:** When no tips match search or filter criteria, a friendly empty state appears prompting the user to adjust filters.
+
 ---
 
 ## Testing the Steps Detail Page (steps.html)
@@ -57,6 +63,11 @@
 1. Click **Print this guide** to open the browser print dialog
 2. Print or save as PDF for offline reference
 
+#### QR & Print
+1. The QR code is intentionally not visible on-screen; it will appear in the printed output or print preview.
+2. Click **Print this guide** and inspect Print Preview — the QR and a printed date footer should appear.
+3. The printed layout hides navigation and action buttons for a clean, modern printout.
+
 #### Back Navigation
 1. Click "← Back to all tips" to return to the main list
 2. Use browser back button also works
@@ -75,6 +86,12 @@
   - Modal fits on mobile screens
   - Steps detail page is usable on mobile
 
+### Recently Viewed
+- Open a tip (click a card → steps page). Returning to the homepage should show a horizontal "Recently Viewed" strip between the header and filters.
+- The strip stores up to the last 10 viewed tips in `localStorage`.
+- Use the **Clear** button to remove all recently viewed items; when empty, the strip shows a short instructional message.
+- On mobile, the strip is horizontally scrollable with touch support.
+
 ---
 
 ## What Should You See?
@@ -86,6 +103,12 @@
 ✅ **Show Steps** buttons that open 70% width popup modals  
 ✅ **Modal popups** with well-aligned, numbered steps  
 ✅ **Mobile-responsive** design  
+
+### Additional Expectations
+- Skeleton loading placeholders while data downloads
+- Small loading spinner during filtering
+- Recently Viewed strip appears after you view a tip and is clearable
+- Print preview shows QR and print date; QR is not visible on-screen
 
 ### Steps Detail Page (steps.html)
 ✅ **Category badge** at top  
@@ -112,6 +135,11 @@
 - Open browser console (F12 → Console tab)
 - Look for any error messages
 - Common issue: Google Sheet not published or URL incorrect
+
+If you encounter persistent HTTP 400/timeout errors when loading CSV:
+- Verify the `GOOGLE_SHEET_CSV_URL` is correct and publicly published (CSV output enabled).
+- Check browser console for detailed HTTP response bodies (sometimes Google shows HTML errors).
+- The app now retries failed requests and times out after 10s; if failures continue, try opening the CSV URL directly in the browser to inspect the raw response.
 
 ### If server won't start:
 - Try right-clicking `start-server.bat` → "Run as administrator"

@@ -1,6 +1,76 @@
 // Configuration: reuse the same Google Sheet CSV export URL as the main page
 const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRySrOei6t0p90wolpc8EXrJ5B27pLi2ssZDZGrltJbESEQJgokOKPVBRSb520dcixS84VG0ky7yVug/pub?output=csv';
 
+// ===== Recently Viewed Functions =====
+
+function getRecentlyViewedStorageKey() {
+    return 've-it-tips-recently-viewed:v1';
+}
+
+function loadRecentlyViewed() {
+    try {
+        const raw = localStorage.getItem(getRecentlyViewedStorageKey());
+        if (!raw) return [];
+        return JSON.parse(raw);
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveRecentlyViewed(tipId, issue) {
+    try {
+        let recent = loadRecentlyViewed();
+        
+        // Remove if already exists (to move to top)
+        recent = recent.filter(item => item.id !== tipId);
+        
+        // Add to front
+        recent.unshift({
+            id: tipId,
+            issue: issue,
+            viewedAt: new Date().toISOString()
+        });
+        
+        // Keep only last 10
+        recent = recent.slice(0, 10);
+        
+        localStorage.setItem(getRecentlyViewedStorageKey(), JSON.stringify(recent));
+        try {
+            sessionStorage.setItem('ve-it-tips-has-recent', '1');
+        } catch (e) {}
+    } catch (e) {
+        // Ignore storage errors
+    }
+}
+
+// ===== QR Code Function =====
+
+function generateQRCode(tipId) {
+    const qrSection = document.getElementById('qrCodeSection');
+    const qrImage = document.getElementById('qrCodeImage');
+    const printDate = document.getElementById('printDate');
+    
+    if (!qrSection || !qrImage) return;
+    
+    // Get full URL to this specific tip
+    const tipUrl = window.location.href;
+    
+    // Use free QR server API
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(tipUrl)}`;
+    
+    qrImage.src = qrApiUrl;
+    // Keep QR hidden on-screen; CSS will print it via @media print rules.
+    
+    // Set print date
+    if (printDate) {
+        printDate.textContent = new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }
+}
+
 // ===== Utility Functions =====
 
 function getQueryParam(name) {
@@ -149,15 +219,40 @@ function formatTimestamp(timestamp) {
 }
 
 async function fetchCSVData() {
-    const response = await fetch(GOOGLE_SHEET_CSV_URL);
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+    const maxRetries = 3;
+    const timeoutMs = 10000;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            const response = await fetch(GOOGLE_SHEET_CSV_URL, { signal: controller.signal });
+            clearTimeout(id);
+
+            if (!response.ok) {
+                const text = await response.text().catch(() => '');
+                console.warn('Non-OK response preview:', text.substring(0, 200));
+                throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+            }
+
+            const csvText = await response.text();
+            if (!csvText || csvText.trim().length === 0) {
+                throw new Error('CSV file is empty');
+            }
+
+            return parseCSV(csvText);
+        } catch (err) {
+            clearTimeout(id);
+            console.error(`fetchCSVData attempt ${attempt} failed:`, err && err.message ? err.message : err);
+            if (attempt === maxRetries) {
+                throw err;
+            }
+            const backoff = 300 * Math.pow(2, attempt - 1);
+            await new Promise(res => setTimeout(res, backoff));
+        }
     }
-    const csvText = await response.text();
-    if (!csvText || csvText.trim().length === 0) {
-        throw new Error('CSV file is empty');
-    }
-    return parseCSV(csvText);
+    return [];
 }
 
 function showStepsError(message) {
@@ -316,6 +411,10 @@ async function initStepsPage() {
             if (titleEl) titleEl.textContent = 'Tip not found';
             return;
         }
+
+        // Save to recently viewed and generate QR code
+        saveRecentlyViewed(tipId, tip.Issue);
+        generateQRCode(tipId);
 
         const issue = tip.Issue || 'IT Tip';
         const description = tip.Description || '';

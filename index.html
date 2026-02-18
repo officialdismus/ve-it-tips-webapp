@@ -14,6 +14,19 @@
     </header>
 
     <main>
+        <!-- Recently Viewed Section -->
+        <section id="recentlyViewedSection" class="recently-viewed-section" style="display: none;">
+            <div class="recently-viewed-header">
+                <h3 class="recently-viewed-title">
+                    <span>🕐</span> Recently Viewed
+                </h3>
+                <button class="recently-viewed-toggle" onclick="clearRecentlyViewed()">Clear</button>
+            </div>
+            <div id="recentlyViewedList" class="recently-viewed-list">
+                <!-- Recently viewed items will be inserted here -->
+            </div>
+        </section>
+
         <section class="filters">
             <div class="search-container">
                 <label for="searchInput" class="sr-only">Search tips</label>

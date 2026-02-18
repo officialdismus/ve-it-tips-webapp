@@ -6,6 +6,8 @@
   - Parsing CSV data into objects
   - Rendering tip cards dynamically on the page
   - Handling user interactions with search, filters, and step toggles
+  - Loading states (skeleton screens, spinner, error states)
+  - Recently viewed tips functionality
 */
 
 // Configuration: Google Sheet CSV export URL (published)
@@ -15,6 +17,162 @@ const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR
 // Global state
 let allTips = [];
 let filteredTips = [];
+
+// ===== Recently Viewed Functions =====
+
+function getRecentlyViewedStorageKey() {
+    return 've-it-tips-recently-viewed:v1';
+}
+
+function loadRecentlyViewed() {
+    try {
+        const raw = localStorage.getItem(getRecentlyViewedStorageKey());
+        if (!raw) return [];
+        return JSON.parse(raw);
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveRecentlyViewed(tipId, issue) {
+    try {
+        let recent = loadRecentlyViewed();
+        
+        // Remove if already exists (to move to top)
+        recent = recent.filter(item => item.id !== tipId);
+        
+        // Add to front
+        recent.unshift({
+            id: tipId,
+            issue: issue,
+            viewedAt: new Date().toISOString()
+        });
+        
+        // Keep only last 10
+        recent = recent.slice(0, 10);
+        
+        localStorage.setItem(getRecentlyViewedStorageKey(), JSON.stringify(recent));
+    try {
+        sessionStorage.setItem('ve-it-tips-has-recent', '1');
+    } catch (e) {}
+    } catch (e) {
+        // Ignore storage errors
+    }
+}
+
+function renderRecentlyViewed() {
+    const recent = loadRecentlyViewed();
+    const section = document.getElementById('recentlyViewedSection');
+    const container = document.getElementById('recentlyViewedList');
+    const clearBtn = section.querySelector('.recently-viewed-toggle');
+
+    // Always show the section; display a friendly empty message when there are no items
+    section.style.display = 'block';
+
+    if (!recent || recent.length === 0) {
+        container.innerHTML = `
+            <div class="recent-empty">
+                <p class="recent-empty-title">No recently viewed tips yet</p>
+                <p class="recent-empty-desc">Open a tip to build your recently viewed list — we'll keep the last 10 for quick access.</p>
+            </div>
+        `;
+        if (clearBtn) clearBtn.style.display = 'none';
+        return;
+    }
+
+    // Show Clear button
+    if (clearBtn) {
+        clearBtn.style.display = 'inline-flex';
+        clearBtn.textContent = 'Clear';
+    }
+
+    container.innerHTML = recent.map(item => `
+        <a href="steps.html?id=${encodeURIComponent(item.id)}" class="recent-item">
+            <span class="recent-item-icon">📋</span>
+            ${escapeHtml(item.issue)}
+        </a>
+    `).join('');
+}
+
+function clearRecentlyViewed() {
+    try {
+        localStorage.removeItem(getRecentlyViewedStorageKey());
+        sessionStorage.removeItem('ve-it-tips-has-recent');
+    } catch (e) {}
+    renderRecentlyViewed();
+}
+
+function toggleRecentlyViewed() {
+    const section = document.getElementById('recentlyViewedSection');
+    const toggleBtn = section.querySelector('.recently-viewed-toggle');
+    
+    if (section.style.display === 'none') {
+        section.style.display = 'block';
+        toggleBtn.textContent = 'Hide';
+    } else {
+        section.style.display = 'none';
+        toggleBtn.textContent = 'Show';
+    }
+}
+
+// Make functions available globally
+window.toggleRecentlyViewed = toggleRecentlyViewed;
+
+// ===== Loading State Functions =====
+
+function showSkeletons(count = 6) {
+    const container = document.getElementById('cardsContainer');
+    
+    let html = '';
+    for (let i = 0; i < count; i++) {
+        html += `
+            <div class="skeleton-card">
+                <div class="skeleton skeleton-badge"></div>
+                <div class="skeleton skeleton-title"></div>
+                <div class="skeleton skeleton-description"></div>
+                <div class="skeleton skeleton-description short"></div>
+                <div class="skeleton skeleton-button"></div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+function showLoading() {
+    const container = document.getElementById('cardsContainer');
+    container.innerHTML = `
+        <div class="loading-inline">
+            <div class="spinner"></div>
+            <span>Loading IT tips...</span>
+        </div>
+    `;
+}
+
+function showErrorState(message) {
+    const container = document.getElementById('cardsContainer');
+    container.innerHTML = `
+        <div class="error-state">
+            <div class="error-icon">⚠️</div>
+            <h3 class="error-title">Unable to load tips</h3>
+            <p class="error-message">${escapeHtml(message)}</p>
+            <button class="error-button" onclick="location.reload()">
+                Try Again
+            </button>
+        </div>
+    `;
+}
+
+function showEmptyState() {
+    const container = document.getElementById('cardsContainer');
+    container.innerHTML = `
+        <div class="empty-state">
+            <div class="empty-icon">🔍</div>
+            <h3 class="empty-title">No tips found</h3>
+            <p class="empty-message">Try adjusting your search or filter criteria</p>
+        </div>
+    `;
+}
 
 // ===== CSV Parsing Functions =====
 
@@ -156,89 +314,94 @@ function parseCSVRows(csvText) {
  * Fetches CSV data from Google Sheets
  */
 async function fetchCSVData() {
+    const maxRetries = 3;
+    const timeoutMs = 10000; // 10s per request
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            console.log(`CSV fetch attempt ${attempt} to ${GOOGLE_SHEET_CSV_URL}`);
+            const response = await fetch(GOOGLE_SHEET_CSV_URL, { signal: controller.signal });
+            clearTimeout(id);
+
+            console.log('Response status:', response.status, response.statusText);
+            if (!response.ok) {
+                const text = await response.text().catch(() => '');
+                console.warn('Non-OK response body preview:', text.substring(0, 200));
+                throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+            }
+
+            const csvText = await response.text();
+            if (!csvText || csvText.trim().length === 0) {
+                throw new Error('CSV file is empty');
+            }
+
+            const parsedData = parseCSV(csvText);
+            if (parsedData.length === 0) {
+                console.error('No data rows found in CSV');
+                console.error('CSV preview:', csvText.substring(0, 1000));
+                throw new Error('CSV file appears to be empty or could not be parsed.');
+            }
+
+            return parsedData;
+        } catch (err) {
+            clearTimeout(id);
+            console.error(`Fetch attempt ${attempt} failed:`, err && err.message ? err.message : err);
+            if (attempt === maxRetries) {
+                const message = err && err.name === 'AbortError' ? 'Request timed out' : (err && err.message ? err.message : 'Unknown error');
+                showErrorState(`Failed to load tips data: ${message}`);
+                return [];
+            }
+            // Exponential backoff before retrying
+            const backoff = 300 * Math.pow(2, attempt - 1);
+            await new Promise(res => setTimeout(res, backoff));
+        }
+    }
+    return [];
+}
+
+// ===== Initialization =====
+
+/**
+ * Initialize the application
+ */
+async function init() {
+    // Show skeleton cards while loading
+    showSkeletons(6);
+    
     try {
-        console.log('=== Starting CSV Fetch ===');
-        console.log('URL:', GOOGLE_SHEET_CSV_URL);
+        allTips = await fetchCSVData();
         
-        const response = await fetch(GOOGLE_SHEET_CSV_URL);
-        console.log('Response status:', response.status, response.statusText);
-        console.log('Response headers:', {
-            'content-type': response.headers.get('content-type'),
-            'content-length': response.headers.get('content-length')
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+        if (allTips.length === 0) {
+            return; // Error already shown in fetchCSVData
         }
         
-        const csvText = await response.text();
-        console.log('CSV fetched successfully');
-        console.log('CSV length:', csvText.length, 'characters');
-        console.log('First 200 characters:', csvText.substring(0, 200));
-        console.log('Last 100 characters:', csvText.substring(csvText.length - 100));
+        filteredTips = [...allTips];
+        populateCategoryFilter();
+        renderCards();
+        renderRecentlyViewed();
         
-        if (!csvText || csvText.trim().length === 0) {
-            throw new Error('CSV file is empty');
-        }
-        
-        const parsedData = parseCSV(csvText);
-        console.log('=== Parsing Results ===');
-        console.log('Total rows parsed:', parsedData.length);
-        
-        if (parsedData.length === 0) {
-            console.error('No data rows found in CSV');
-            console.error('CSV preview:', csvText.substring(0, 1000));
-            throw new Error('CSV file appears to be empty or could not be parsed. Check console for details.');
-        }
-        
-        // Validate structure - check if we have expected columns
-        const expectedColumns = ['ID', 'Category', 'Issue', 'Description', 'Steps', 'CreatedBy', 'Timestamp'];
-        const firstRow = parsedData[0];
-        const foundColumns = Object.keys(firstRow);
-        
-        console.log('Expected columns:', expectedColumns);
-        console.log('Found columns:', foundColumns);
-        
-        const hasRequiredFields = expectedColumns.every(col => firstRow.hasOwnProperty(col));
-        
-        if (!hasRequiredFields) {
-            console.warn('⚠️ CSV structure mismatch!');
-            console.warn('Missing columns:', expectedColumns.filter(col => !firstRow.hasOwnProperty(col)));
-            console.warn('Unexpected columns:', foundColumns.filter(col => !expectedColumns.includes(col)));
-        } else {
-            console.log('✅ CSV structure validated successfully');
-        }
-        
-        if (parsedData.length > 0) {
-            console.log('First row sample:', {
-                ID: firstRow.ID,
-                Category: firstRow.Category,
-                Issue: firstRow.Issue?.substring(0, 50),
-                StepsLength: firstRow.Steps ? firstRow.Steps.length : 0,
-                CreatedBy: firstRow.CreatedBy
-            });
-        }
-        
-        console.log('=== CSV Fetch Complete ===');
-        return parsedData;
     } catch (error) {
-        console.error('=== Error Fetching CSV ===');
-        console.error('Error type:', error.name);
-        console.error('Error message:', error.message);
-        console.error('Error stack:', error.stack);
-        
-        let errorMessage = `Failed to load tips data: ${error.message}`;
-        
-        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            errorMessage += '\n\nPossible causes:\n- CORS issue (check if sheet is published)\n- Network connection problem\n- Google Sheets access restrictions';
-        } else if (error.message.includes('empty')) {
-            errorMessage += '\n\nThe CSV file appears to be empty. Please check:\n- Google Sheet has data\n- Sheet is published to web\n- CSV export is enabled';
-        }
-        
-        showError(errorMessage);
-        return [];
+        console.error('Initialization error:', error);
+        showErrorState('An unexpected error occurred. Please try again.');
     }
 }
+
+// Start the app when DOM is ready
+document.addEventListener('DOMContentLoaded', init);
+
+// Ensure recently viewed is refreshed when returning via back/forward cache or tab visibility
+window.addEventListener('pageshow', (event) => {
+    try { renderRecentlyViewed(); } catch (e) {}
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        try { renderRecentlyViewed(); } catch (e) {}
+    }
+});
 
 // ===== Category Management =====
 
@@ -279,20 +442,26 @@ function getCategoryBadgeClass(category) {
 function filterTips() {
     const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
     const selectedCategory = document.getElementById('categoryFilter').value;
-    
-    filteredTips = allTips.filter(tip => {
-        // Search filter (Issue or Description)
-        const matchesSearch = !searchQuery || 
-            (tip.Issue && tip.Issue.toLowerCase().includes(searchQuery)) ||
-            (tip.Description && tip.Description.toLowerCase().includes(searchQuery));
-        
-        // Category filter
-        const matchesCategory = !selectedCategory || tip.Category === selectedCategory;
-        
-        return matchesSearch && matchesCategory;
-    });
-    
-    renderCards();
+
+    // Show inline loading state while filtering so users get feedback
+    showLoading();
+
+    // Defer heavy work slightly so the loading spinner can render
+    setTimeout(() => {
+        filteredTips = allTips.filter(tip => {
+            // Search filter (Issue or Description)
+            const matchesSearch = !searchQuery || 
+                (tip.Issue && tip.Issue.toLowerCase().includes(searchQuery)) ||
+                (tip.Description && tip.Description.toLowerCase().includes(searchQuery));
+            
+            // Category filter
+            const matchesCategory = !selectedCategory || tip.Category === selectedCategory;
+            
+            return matchesSearch && matchesCategory;
+        });
+
+        renderCards();
+    }, 50);
 }
 
 // ===== Rendering Functions =====
@@ -392,12 +561,7 @@ function renderCards() {
     container.innerHTML = '';
     
     if (filteredTips.length === 0) {
-        container.innerHTML = `
-            <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: #666;">
-                <p style="font-size: 1.25rem; margin-bottom: 0.5rem;">No tips found</p>
-                <p>Try adjusting your search or filter criteria.</p>
-            </div>
-        `;
+        showEmptyState();
         return;
     }
     

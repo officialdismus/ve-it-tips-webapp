@@ -70,6 +70,12 @@ The Google Sheet is:
 - ✅ Clear, readable steps formatting
 - ✅ Village Enterprise branding and colors
 
+- ✅ Skeleton loading cards with shimmer while data loads
+- ✅ Inline loading spinner shown during filtering operations
+- ✅ Recently viewed list (tracks last 10 tips in localStorage, clearable)
+- ✅ Print-friendly QR codes (QR appears in print output only) and print date footer
+- ✅ Robust CSV fetch with retries and timeouts to avoid long hangs
+
 ### UX Principles:
 
 - Beginner-friendly
@@ -138,6 +144,14 @@ The application is hosted **for free on GitHub Pages** and served as a **static 
    ```javascript
    const GOOGLE_SHEET_CSV_URL = 'YOUR_PUBLISHED_CSV_URL_HERE';
    ```
+
+### Recent changes included in this repo
+
+- Skeleton loading screens and a small loading spinner during filtering for better UX.
+- A "Recently Viewed" strip on the homepage that stores up to 10 entries in `localStorage` and can be cleared by the user.
+- The QR code for a guide is now print-only (appears in print preview/print), and a print date footer is included.
+- CSV fetching now uses a retry + timeout strategy to handle intermittent network errors and avoid long hangs.
+- Steps page content width adjusted to 85% (max 1200px) for improved readability.
 
 ### Running Locally:
 
