@@ -25,6 +25,12 @@
                 </header>
 
                 <section class="steps-detail-body">
+                    <div class="steps-actions">
+                        <button id="checklistToggleButton" class="steps-checklist-btn">Checklist</button>
+                        <button id="copyStepsButton" class="steps-copy-btn">Copy all steps</button>
+                        <button id="printStepsButton" class="steps-print-btn">Print this guide</button>
+                    </div>
+                    <p id="stepsProgress" class="steps-progress-text" aria-live="polite"></p>
                     <ol id="stepsDetailList" class="steps-detail-list">
                         <!-- Steps will be inserted here -->
                     </ol>

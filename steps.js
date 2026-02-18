@@ -174,6 +174,116 @@ function showStepsError(message) {
     `;
 }
 
+function getChecklistStorageKey(tipId) {
+    return `ve-it-tips-checklist:${tipId}:v1`;
+}
+
+function loadChecklistState(tipId, totalSteps) {
+    try {
+        const raw = localStorage.getItem(getChecklistStorageKey(tipId));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return null;
+
+        const arr = parsed.map(v => Boolean(v));
+        if (typeof totalSteps === 'number' && totalSteps >= 0) {
+            if (arr.length > totalSteps) return arr.slice(0, totalSteps);
+            if (arr.length < totalSteps) {
+                return [...arr, ...new Array(totalSteps - arr.length).fill(false)];
+            }
+        }
+        return arr;
+    } catch (e) {
+        return null;
+    }
+}
+
+function saveChecklistState(tipId, checkedArray) {
+    try {
+        localStorage.setItem(getChecklistStorageKey(tipId), JSON.stringify(checkedArray));
+    } catch (e) {
+        // Ignore storage errors (quota/private mode)
+    }
+}
+
+function normalizeSequentialState(checkedArray) {
+    if (!Array.isArray(checkedArray)) return checkedArray;
+    const normalized = [...checkedArray];
+    let foundFirstUnchecked = false;
+    for (let i = 0; i < normalized.length; i++) {
+        if (foundFirstUnchecked) {
+            normalized[i] = false;
+            continue;
+        }
+        if (!normalized[i]) {
+            foundFirstUnchecked = true;
+        }
+    }
+    return normalized;
+}
+
+function updateProgress(progressEl, completedCount, total) {
+    if (!progressEl) return;
+    progressEl.textContent = `${completedCount} of ${total} completed`;
+}
+
+function applyChecklistState(checkboxes, checkedArray) {
+    checkboxes.forEach((checkbox, idx) => {
+        checkbox.checked = Boolean(checkedArray?.[idx]);
+        const li = checkbox.closest('li');
+        if (li) {
+            li.classList.toggle('completed', checkbox.checked);
+        }
+    });
+}
+
+function syncSequentialAvailability(checkboxes) {
+    // Enable all checked steps; enable the first unchecked step; disable remaining unchecked steps.
+    let firstUncheckedIndex = -1;
+    for (let i = 0; i < checkboxes.length; i++) {
+        if (!checkboxes[i].checked) {
+            firstUncheckedIndex = i;
+            break;
+        }
+    }
+
+    for (let i = 0; i < checkboxes.length; i++) {
+        const cb = checkboxes[i];
+        if (cb.checked) {
+            cb.disabled = false;
+        } else if (firstUncheckedIndex === -1) {
+            cb.disabled = false;
+        } else {
+            cb.disabled = i !== firstUncheckedIndex;
+        }
+    }
+}
+
+async function copyTextToClipboard(text) {
+    // Prefer modern async clipboard API when available.
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(text);
+        return;
+    }
+
+    // Fallback for environments where clipboard permissions are restricted.
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-9999px';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    const success = document.execCommand && document.execCommand('copy');
+    document.body.removeChild(textarea);
+
+    if (!success) {
+        throw new Error('Copy not supported');
+    }
+}
+
 async function initStepsPage() {
     const tipId = getQueryParam('id');
     const titleEl = document.getElementById('stepsIssueTitle');
@@ -182,6 +292,7 @@ async function initStepsPage() {
     const categoryEl = document.getElementById('stepsDetailCategory');
     const createdByEl = document.getElementById('stepsDetailCreatedBy');
     const dateEl = document.getElementById('stepsDetailDate');
+    const progressEl = document.getElementById('stepsProgress');
 
     if (!tipId) {
         showStepsError('No tip selected. Please choose a tip from the main list.');
@@ -235,8 +346,14 @@ async function initStepsPage() {
             dateEl.style.display = formatted ? '' : 'none';
         }
 
+        if (progressEl) {
+            progressEl.textContent = '';
+            progressEl.style.display = 'none';
+        }
+
         if (listEl) {
             listEl.innerHTML = '';
+            listEl.classList.remove('checklist-enabled');
 
             if (steps.length === 0) {
                 const li = document.createElement('li');
@@ -245,10 +362,143 @@ async function initStepsPage() {
             } else {
                 steps.forEach(step => {
                     const li = document.createElement('li');
-                    li.innerHTML = `<div class="step-content">${escapeHtml(step)}</div>`;
+                    li.innerHTML = `
+                        <label class="steps-check-label">
+                            <input type="checkbox" class="steps-check-input" />
+                            <div class="step-content">${escapeHtml(step)}</div>
+                        </label>
+                    `;
                     listEl.appendChild(li);
                 });
+
+                const checklistBtn = document.getElementById('checklistToggleButton');
+                const checkboxes = Array.from(listEl.querySelectorAll('.steps-check-input'));
+
+                // Checklist mode is optional; disable interactions until enabled.
+                checkboxes.forEach(cb => {
+                    cb.disabled = true;
+                });
+
+                const applyAndPersist = () => {
+                    const checkedArray = checkboxes.map(cb => cb.checked);
+                    const completedCount = checkedArray.filter(Boolean).length;
+                    updateProgress(progressEl, completedCount, checkboxes.length);
+                    saveChecklistState(tipId, checkedArray);
+                };
+
+                const enableChecklist = () => {
+                    listEl.classList.add('checklist-enabled');
+                    if (checklistBtn) checklistBtn.classList.add('active');
+                    if (progressEl) progressEl.style.display = '';
+
+                    let state = loadChecklistState(tipId, checkboxes.length) || new Array(checkboxes.length).fill(false);
+                    state = normalizeSequentialState(state);
+                    applyChecklistState(checkboxes, state);
+
+                    // Enable sequentially: first unchecked (or all checked -> all enabled)
+                    syncSequentialAvailability(checkboxes);
+                    applyAndPersist();
+                };
+
+                const disableChecklist = () => {
+                    listEl.classList.remove('checklist-enabled');
+                    if (checklistBtn) checklistBtn.classList.remove('active');
+                    if (progressEl) {
+                        progressEl.textContent = '';
+                        progressEl.style.display = 'none';
+                    }
+
+                    // Disable all checkboxes so labels can't toggle while hidden
+                    checkboxes.forEach(cb => {
+                        cb.disabled = true;
+                    });
+                };
+
+                // Enforce sequential completion and cascade on uncheck.
+                checkboxes.forEach((checkbox, idx) => {
+                    checkbox.addEventListener('change', () => {
+                        if (!listEl.classList.contains('checklist-enabled')) {
+                            checkbox.checked = false;
+                            return;
+                        }
+
+                        if (checkbox.checked) {
+                            // No skipping: ensure all previous are checked
+                            for (let i = 0; i < idx; i++) {
+                                if (!checkboxes[i].checked) {
+                                    checkbox.checked = false;
+                                    if (progressEl) {
+                                        progressEl.textContent = 'Complete previous steps first.';
+                                    }
+                                    return;
+                                }
+                            }
+                        } else {
+                            // Cascade: uncheck all later steps
+                            for (let i = idx + 1; i < checkboxes.length; i++) {
+                                checkboxes[i].checked = false;
+                                const li = checkboxes[i].closest('li');
+                                if (li) li.classList.remove('completed');
+                            }
+                        }
+
+                        const li = checkbox.closest('li');
+                        if (li) {
+                            li.classList.toggle('completed', checkbox.checked);
+                        }
+
+                        syncSequentialAvailability(checkboxes);
+                        applyAndPersist();
+                    });
+                });
+
+                if (checklistBtn) {
+                    checklistBtn.addEventListener('click', () => {
+                        const enabled = listEl.classList.contains('checklist-enabled');
+                        if (enabled) {
+                            disableChecklist();
+                        } else {
+                            enableChecklist();
+                        }
+                    });
+                }
+
+                // Start with checklist disabled by default.
+                disableChecklist();
             }
+        }
+
+        // Wire up actions: copy and print
+        const copyBtn = document.getElementById('copyStepsButton');
+        const printBtn = document.getElementById('printStepsButton');
+
+        if (copyBtn) {
+            if (!steps || steps.length === 0) {
+                copyBtn.style.display = 'none';
+            } else {
+                copyBtn.style.display = '';
+                copyBtn.addEventListener('click', () => {
+                    const text = steps.map((s, i) => `${i + 1}. ${s}`).join('\n');
+                    const originalText = copyBtn.textContent;
+                    copyTextToClipboard(text).then(() => {
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => {
+                            copyBtn.textContent = originalText;
+                        }, 2000);
+                    }).catch(() => {
+                        copyBtn.textContent = 'Copy failed';
+                        setTimeout(() => {
+                            copyBtn.textContent = originalText;
+                        }, 2000);
+                    });
+                });
+            }
+        }
+
+        if (printBtn) {
+            printBtn.addEventListener('click', () => {
+                window.print();
+            });
         }
     } catch (error) {
         console.error('Error loading steps detail page:', error);
