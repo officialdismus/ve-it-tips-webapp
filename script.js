@@ -351,6 +351,8 @@ function renderCard(tip, index) {
     
     const steps = parseSteps(tip.Steps || '');
     const hasSteps = steps.length > 0;
+    const tipId = tip.ID || '';
+    const stepsUrl = `steps.html?id=${encodeURIComponent(tipId)}`;
     
     // Category badge
     const categoryBadge = tip.Category ? 
@@ -359,9 +361,9 @@ function renderCard(tip, index) {
     
     // Steps toggle button
     const stepsButtonHTML = hasSteps ? `
-        <button class="steps-toggle-btn" onclick="showStepsModal('${escapeHtml(tip.Issue || 'Steps')}', ${JSON.stringify(steps).replace(/"/g, '&quot;')})" aria-label="Show steps for ${escapeHtml(tip.Issue || 'this tip')}">
+        <a class="steps-toggle-btn" href="${stepsUrl}" aria-label="Show steps for ${escapeHtml(tip.Issue || 'this tip')}" role="button">
             Show Steps
-        </button>
+        </a>
     ` : '';
     
     card.innerHTML = `

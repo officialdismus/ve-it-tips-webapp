@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Detailed IT tip steps - Village Enterprise IT Tips">
+    <title>IT Tip Steps - Village Enterprise</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Village Enterprise IT Tips</h1>
+        <p class="description">Step-by-step guidance</p>
+    </header>
+
+    <main class="steps-page">
+        <div class="steps-page-inner">
+            <a href="index.html" class="steps-back-link">&larr; Back to all tips</a>
+
+            <article class="steps-detail-card" id="stepsDetailCard">
+                <header class="steps-detail-header">
+                    <p class="steps-detail-category" id="stepsDetailCategory"></p>
+                    <h2 class="steps-detail-title" id="stepsIssueTitle">Loading steps...</h2>
+                    <p class="steps-detail-description" id="stepsIssueDescription"></p>
+                </header>
+
+                <section class="steps-detail-body">
+                    <ol id="stepsDetailList" class="steps-detail-list">
+                        <!-- Steps will be inserted here -->
+                    </ol>
+                </section>
+
+                <footer class="steps-detail-meta">
+                    <span id="stepsDetailCreatedBy" class="steps-detail-meta-item"></span>
+                    <span id="stepsDetailDate" class="steps-detail-meta-item"></span>
+                </footer>
+            </article>
+
+            <div id="stepsErrorContainer" class="steps-error-container" aria-live="polite"></div>
+        </div>
+    </main>
+
+    <script src="steps.js"></script>
+</body>
+</html>
+
