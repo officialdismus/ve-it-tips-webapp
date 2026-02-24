@@ -1036,6 +1036,7 @@ header .description {
         margin-top: 20px;
         padding-top: 15px;
         border-top: none !important;
+        border: none !important;
         page-break-inside: avoid;
         background: none !important;
         box-shadow: none !important;
